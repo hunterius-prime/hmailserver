@@ -265,6 +265,17 @@ namespace HM
       }
       else
       {
+         //check if start is not over buffer
+         if (iOctetStart > iBufferSize)
+         {
+            ////reset to start?
+            //iOctetStart = 0;
+
+            //alt
+            iOctetStart = iBufferSize;
+            iOctetCount = 0;
+         }
+
          // Jump forward to the start of the buffer.
          iBufferSize -= iOctetStart;
 
@@ -284,12 +295,13 @@ namespace HM
    }
 
    std::shared_ptr<MimeBody> 
-   IMAPFetch::GetBodyPartByRecursiveIdentifier_(std::shared_ptr<MimeBody> pBody, const String &sName)
+      IMAPFetch::GetBodyPartByRecursiveIdentifier_(std::shared_ptr<MimeBody> pBody, IMAPFetchParser::BodyPart& oPart)
    //---------------------------------------------------------------------------()
    // DESCRIPTION:
    // Returns a body part by a given identifier. An identifier can be 1, 2, 1.2 etc.
    //---------------------------------------------------------------------------()
    {
+String sName = oPart.GetName();
       if (!pBody || sName.IsEmpty())
       {
          std::shared_ptr<MimeBody> pEmpty;
@@ -321,7 +333,8 @@ namespace HM
                return pBody;
             }
 
-            if (pBody->IsEncapsulatedRFC822Message())
+            //load encapsulated RFC message only if we are not requesting MIME
+            if (pBody->IsEncapsulatedRFC822Message() && !oPart.GetShowMime())
             {
                try
                {
@@ -367,7 +380,7 @@ namespace HM
       if (!oPart.GetName().IsEmpty())
       {
          String sMimePart;
-         pBodyPart  = GetBodyPartByRecursiveIdentifier_(pBodyPart, oPart.GetName());
+         pBodyPart = GetBodyPartByRecursiveIdentifier_(pBodyPart, oPart);
 
          if (!pBodyPart)
             return pOutBuf;
@@ -398,6 +411,7 @@ namespace HM
          //  body = body.Mid(iByteStart);
 
          GetBytesToSend_(body.GetLength(), oPart, iByteStart, iByteCount);
+
 
 	 // Fix for Apple Mail BODY PEEK with start + size issue
 	 // Start was being ignored before as it was never used
